@@ -5,6 +5,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.techreturners.model.Task;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -12,24 +16,38 @@ import org.apache.logging.log4j.Logger;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 
-public class Handler implements RequestHandler<Map<String, Object>, ApiGatewayResponse> {
+public class Handler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
 	private static final Logger LOG = LogManager.getLogger(Handler.class);
 
 	@Override
-	public ApiGatewayResponse handleRequest(Map<String, Object> input, Context context) {
+	public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent request, Context context) {
 		LOG.info("received the request");
 
+		String userId = request.getPathParameters().get("userId");
 
-		Task t1 = new Task("abc1234", "Pick up the newspapers", false);
-		Task t2 = new Task("abc4567", "Enjoy Java!", false);
 		List<Task> tasks = new ArrayList<>();
-		tasks.add(t1);
-		tasks.add(t2);
+		if(userId.equals("abc123")) {
+			Task t1 = new Task("abc1234", "Pick up the newspapers", false);
+			tasks.add(t1);
+		}
+		else {
+			Task t2 = new Task("abc4567", "Enjoy Java!", false);
+			tasks.add(t2);
+		}
 
-		return ApiGatewayResponse.builder()
-				.setStatusCode(200)
-				.setObjectBody(tasks)
-				.build();
+		APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
+		response.setStatusCode(200);
+
+		ObjectMapper objectMapper = new ObjectMapper();
+		try {
+			String responseBody = objectMapper.writeValueAsString(tasks);
+			response.setBody(responseBody);
+		}
+		catch(JsonProcessingException e) {
+			LOG.error("Unable to marshall tasks array", e);
+		}
+
+		return response;
 	}
 }

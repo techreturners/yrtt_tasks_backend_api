@@ -1,5 +1,9 @@
 package com.techreturners;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,6 +22,10 @@ public class GetTasksHandler implements RequestHandler<APIGatewayProxyRequestEve
 
 	private static final Logger LOG = LogManager.getLogger(GetTasksHandler.class);
 
+	private Connection connection = null;
+	private PreparedStatement preparedStatement = null;
+	private ResultSet resultSet = null;
+
 	@Override
 	public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent request, Context context) {
 		LOG.info("received the request");
@@ -25,13 +33,32 @@ public class GetTasksHandler implements RequestHandler<APIGatewayProxyRequestEve
 		String userId = request.getPathParameters().get("userId");
 
 		List<Task> tasks = new ArrayList<>();
-		if(userId.equals("abc123")) {
-			Task t1 = new Task("abc1234", "Pick up the newspapers", false);
-			tasks.add(t1);
+
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			connection = DriverManager.getConnection(String.format("jdbc:mysql://%s/%s?user=%s&password=%s",
+					"some-db-host",
+					"some-db",
+					"some-db-user",
+					"some-db-password"));
+
+			preparedStatement = connection.prepareStatement("SELECT * FROM task WHERE userId = ?");
+			preparedStatement.setString(1, userId);
+			resultSet = preparedStatement.executeQuery();
+
+			while (resultSet.next()) {
+				Task task = new Task(resultSet.getString("taskId"),
+									 resultSet.getString("description"),
+									 resultSet.getBoolean("completed"));
+
+				tasks.add(task);
+			}
 		}
-		else {
-			Task t2 = new Task("abc4567", "Enjoy Java!", false);
-			tasks.add(t2);
+		catch (Exception e) {
+			LOG.error(String.format("Unable to query database for tasks for user %s", userId), e);
+		}
+		finally {
+			closeConnection();
 		}
 
 		APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
@@ -47,5 +74,24 @@ public class GetTasksHandler implements RequestHandler<APIGatewayProxyRequestEve
 		}
 
 		return response;
+	}
+
+	private void closeConnection() {
+		try {
+			if (resultSet != null) {
+				resultSet.close();
+			}
+
+			if (preparedStatement != null) {
+				preparedStatement.close();
+			}
+
+			if (connection != null) {
+				connection.close();
+			}
+		}
+		catch (Exception e) {
+			LOG.error("Unable to close connections to MySQL - {}", e.getMessage());
+		}
 	}
 }

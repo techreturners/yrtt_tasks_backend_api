@@ -36,11 +36,12 @@ public class GetTasksHandler implements RequestHandler<APIGatewayProxyRequestEve
 
 		try {
 			Class.forName("com.mysql.jdbc.Driver");
+
 			connection = DriverManager.getConnection(String.format("jdbc:mysql://%s/%s?user=%s&password=%s",
-					"some-db-host",
-					"some-db",
-					"some-db-user",
-					"some-db-password"));
+					System.getenv("DB_HOST"),
+					System.getenv("DB_NAME"),
+					System.getenv("DB_USER"),
+					System.getenv("DB_PASSWORD")));
 
 			preparedStatement = connection.prepareStatement("SELECT * FROM task WHERE userId = ?");
 			preparedStatement.setString(1, userId);

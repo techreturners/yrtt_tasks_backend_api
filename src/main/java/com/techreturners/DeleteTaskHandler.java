@@ -15,9 +15,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class SaveTaskHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+public class DeleteTaskHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
-	private static final Logger LOG = LogManager.getLogger(SaveTaskHandler.class);
+	private static final Logger LOG = LogManager.getLogger(DeleteTaskHandler.class);
 
 	private Connection connection = null;
 	private PreparedStatement preparedStatement = null;
@@ -28,9 +28,8 @@ public class SaveTaskHandler implements RequestHandler<APIGatewayProxyRequestEve
 		LOG.info("received the request");
 
 		String userId = request.getPathParameters().get("userId");
-		String requestBody = request.getBody();
+		String taskId = request.getPathParameters().get("taskId");
 
-		ObjectMapper objMapper = new ObjectMapper();
 		APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
 		response.setStatusCode(200);
 		Map<String, String> headers = new HashMap<>();
@@ -38,7 +37,6 @@ public class SaveTaskHandler implements RequestHandler<APIGatewayProxyRequestEve
 		response.setHeaders(headers);
 
 		try {
-			Task t = objMapper.readValue(requestBody, Task.class);
 
 			Class.forName("com.mysql.jdbc.Driver");
 
@@ -48,17 +46,13 @@ public class SaveTaskHandler implements RequestHandler<APIGatewayProxyRequestEve
 					System.getenv("DB_USER"),
 					System.getenv("DB_PASSWORD")));
 
-			preparedStatement = connection.prepareStatement("INSERT INTO task VALUES (?, ?, ?, ?)");
-			preparedStatement.setString(1, UUID.randomUUID().toString());
+			preparedStatement = connection.prepareStatement("DELETE FROM task WHERE taskId = ? AND userId = ?");
+			preparedStatement.setString(1, taskId);
 			preparedStatement.setString(2, userId);
-			preparedStatement.setString(3, t.getDescription());
-			preparedStatement.setBoolean(4, t.isCompleted());
 
 			preparedStatement.execute();
 
 			connection.close();
-		} catch (IOException e) {
-			LOG.error("Unable to unmarshal JSON for adding a task", e);
 		} catch (ClassNotFoundException e) {
 			LOG.error("ClassNotFoundException", e);
 		} catch (SQLException throwables) {

@@ -8,6 +8,12 @@ public class Task {
 
     public Task() {}
 
+    public Task(String taskId, String description) {
+        this.taskId = taskId;
+        this.description = description;
+        this.completed = false;
+    }
+
     public Task(String taskId, String description, boolean completed) {
         this.taskId = taskId;
         this.description = description;
